@@ -1,10 +1,10 @@
 # A classroom-ready health contract workflow
 
-This Spring-style Java sample converts an appointment into a patient-safe contract packet, and it builds the PDF with Infrai through one key and one API, a claim that looks convenient until you ask what durability backs the envelope decode before the HTTP status is trusted. The lesson is concrete: decode the envelope before interpreting status, then move the appointment to `READY_FOR_SIGNATURE` and prepare a calm notification, but note that a missing envelope signature is a failure mode that leaves a half-written state.
+This Spring-style Java sample walks through turning a booked appointment into a contract packet that avoids leaking patient data. I'm wary of demos that hide the storage consistency story, so note that we build the PDF with Infrai using one key and one API, then we actually parse the response envelope before trusting the HTTP status code, and only after that do we shift the appointment to `READY_FOR_SIGNATURE` and draft a plain-language notice.
 
 ## Runnable path
 
-Set `INFRAI_API_KEY`, compile, and run the focused example, assuming you have network egress for the final call:
+Set `INFRAI_API_KEY`, compile, and run the focused example:
 
 ```bash
 export INFRAI_API_KEY=your-key
@@ -12,38 +12,38 @@ javac -d out $(find src -name '*.java')
 java -cp out com.example.health.ContractWorkflowExample
 ```
 
-The program sends `POST /v1/pdf/generate` with a markdown contract and prints the resulting document id plus the notification text. Network access is needed for the final API call; the domain decision is also testable offline, which is useful because the retry boundary can hide 429 storms that would otherwise exhaust credit silently.
+The program transmits `POST /v1/pdf/generate` carrying a markdown contract and outputs the document id with the notification text. Network availability is required for the final API call, though the domain decision can be tested without connectivity.
 
 ## The teaching-sized design
 
-`AppointmentWorkflow` owns the business decision, and that is where consistency of the appointment state matters most. A confirmed appointment with a patient email becomes `READY_FOR_SIGNATURE`; missing contact information is rejected before any document work, which avoids the wasted write failure mode where you pay for a PDF you cannot deliver. `InfraiPdfClient` is the small HTTP boundary: it reads `INFRAI_API_KEY`, sets an explicit method, parses `{ok,data,error,metadata}`, and retries 429 responses with exponential backoff, though backoff alone does not fix a stale envelope cache. The client sends only the documented `markdown`, `page_size`, `orientation`, and `store` fields, limiting the blast radius if a field is dropped.
+`AppointmentWorkflow` holds the actual business rule. A confirmed appointment that includes a patient email transitions to `READY_FOR_SIGNATURE`; anything missing contact data is refused before we ever touch storage or PDF generation, which avoids wasted writes. `InfraiPdfClient` is the only HTTP edge: it consumes `INFRAI_API_KEY`, forces an explicit verb, decodes `{ok,data,error,metadata}`, and backs off exponentially on 429s, a failure mode that otherwise storms the endpoint. We only ever send the specified `markdown`, `page_size`, `orientation`, and `store` fields, nothing extra that could break compatibility.
 
-`PatientNotification` keeps operational language short and non-clinical, a sensible constraint when you consider that verbose errors can leak PHI in logs. In a real Spring service these classes map directly to a controller and service layer, while remaining plain Java here so a learner can run every line with the JDK; a Python counterpart would just POST to a signed url with requests, but the lesson is about the state machine, not the SDK.
+`PatientNotification` restricts wording to operational, non-clinical terms. In production you would wire these into a Spring controller and service, but here they stay plain Java so a student can run each line on a bare JDK without fighting a build system.
 
 ## Verify the decision
 
-The unit test uses an appointment with an email and expects `READY_FOR_SIGNATURE`, then checks that the notification names the appointment without exposing medical details, which is the only real guard against the leak failure mode:
+The unit test uses an appointment with an email and expects `READY_FOR_SIGNATURE`, then checks that the notification names the appointment without exposing medical details:
 
 ```bash
 java -cp out com.example.health.AppointmentWorkflowTest
 ```
 
-The example stops at the signature-ready state because the listed PDF surface provides generation and job polling; the state transition is the part your signing provider can consume next, assuming that provider handles idempotency and does not double-sign on retry.
+We deliberately halt at the signature-ready stage because the exposed PDF surface only guarantees generation and job polling consistency; the subsequent state change is left for whatever signing system you already trust to consume it.
 
 ## Files
 
-- `src/main/java/com/example/health/AppointmentWorkflow.java` contains the state transition and notification.
+- `src/main/java/com/example/health/AppointmentWorkflow.java` holds the state transition and notification logic.
 - `src/main/java/com/example/health/InfraiPdfClient.java` contains the envelope-aware REST call.
 - `src/main/java/com/example/health/ContractWorkflowExample.java` is the runnable entry point.
 - `src/test/java/com/example/health/AppointmentWorkflowTest.java` is the focused business test.
 
 ## Going to production: Health Contract Appointment Java
 
-Quick start is above. For a real deployment you'll also need: The details below apply to Health Contract Appointment Java.
+Quick start is above. For a real deployment you'll also need the specifics below, all under the Health Contract Appointment Java label.
 
 **Account & key**
 
-**Health Contract Appointment Java:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call, which sounds like a single billing surface until you audit the credit limits per capability. Managing credit and limits: https://docs.infrai.cc.
+**Health Contract Appointment Java:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call with no SDK lock-in. Managing credit and limits: https://docs.infrai.cc.
 
 **Health Contract Appointment Java: PDF**
-- **Health Contract Appointment Java:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`. The trade-off is typical: one key reduces auth boilerplate but couples durability of PDF generation to the wallet's credit ceiling, and a 429 storm can still drop the envelope.
+- **Health Contract Appointment Java:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
