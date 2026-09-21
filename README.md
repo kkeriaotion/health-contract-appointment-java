@@ -47,3 +47,7 @@ Quick start is above. For a real deployment you'll also need the specifics below
 
 **Health Contract Appointment Java: PDF**
 - **Health Contract Appointment Java:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
+
+## Further reading
+
+- [Resume PDF Text Extraction and Structured Fields for Monthly Reporting](docs/resume-pdf-text-extraction-and-structured-fields-17tnvt.md)
