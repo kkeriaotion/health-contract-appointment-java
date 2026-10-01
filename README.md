@@ -50,4 +50,5 @@ Quick start is above. For a real deployment you'll also need the specifics below
 
 ## Further reading
 
+- [Python Debugging for PDF Jobs Stuck in Progress (3 Terminal Outcomes)](docs/python-debugging-for-pdf-jobs-stuck-in-progress-3-ix812z.md)
 - [Resume PDF Text Extraction and Structured Fields for Monthly Reporting](docs/resume-pdf-text-extraction-and-structured-fields-17tnvt.md)
